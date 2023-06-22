@@ -33,9 +33,9 @@
 extern UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN Private defines */
-#define	RX_CMD_LEN	35	//指令长度�??20字节
+#define	RX_CMD_LEN	1	//指令长度�????20字节
 
-extern uint8_t RxBuffer[];//20个字符的输入缓冲�?
+extern uint8_t RxBuffer[10];//20个字符的输入缓冲�???
 
 
 extern	uint8_t	isUploadTime;	//是否上传时间数据
@@ -45,7 +45,7 @@ extern	uint8_t	isUploadTime;	//是否上传时间数据
 void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void on_UART_IDLE(UART_HandleTypeDef *huart);	//IDLE中断�??测与处理
+void on_UART_IDLE(UART_HandleTypeDef *huart);	//IDLE中断�????测与处理
 
 void updateRTCTime();	//对接收指令的处理
 

@@ -1,22 +1,22 @@
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * File Name          : RTC.c
-  * Description        : This file provides code for the configuration
-  *                      of the RTC instances.
+  * @file    rtc.c
+  * @brief   This file provides code for the configuration
+  *          of the RTC instances.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2023 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
-
+/* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "rtc.h"
 
@@ -36,8 +36,17 @@ RTC_HandleTypeDef hrtc;
 /* RTC init function */
 void MX_RTC_Init(void)
 {
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
   RTC_TimeTypeDef sTime = {0};
   RTC_DateTypeDef sDate = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
 
   /** Initialize RTC Only
   */
@@ -77,23 +86,38 @@ void MX_RTC_Init(void)
   {
     Error_Handler();
   }
+
   /** Enable the WakeUp
   */
   if (HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 0, RTC_WAKEUPCLOCK_CK_SPRE_16BITS) != HAL_OK)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 
 }
 
 void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
 {
 
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
   if(rtcHandle->Instance==RTC)
   {
   /* USER CODE BEGIN RTC_MspInit 0 */
 
   /* USER CODE END RTC_MspInit 0 */
+
+  /** Initializes the peripherals clock
+  */
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+    PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
     /* RTC clock enable */
     __HAL_RCC_RTC_ENABLE();
 
@@ -134,22 +158,19 @@ void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 	if (HAL_RTC_GetTime(hrtc, &sTime,  RTC_FORMAT_BIN) == HAL_OK)
 	{
 		HAL_RTC_GetDate(hrtc, &sDate,  RTC_FORMAT_BIN);
-		uint8_t		timeStr[20];	//时间字符�?? hh:mm:ss
-		sprintf(timeStr,"%2d:%2d:%2d\n",sTime.Hours,sTime.Minutes,sTime.Seconds);  //自动加�?�\0�??
+		uint8_t		timeStr[20];	//时间字符�??? hh:mm:ss
+		sprintf(timeStr,"%2d:%2d:%2d\n",sTime.Hours,sTime.Minutes,sTime.Seconds);  //自动加�?�\0�???
 
-		LCD_ShowStr(30,110, timeStr);  //在LCD上显示当前时�??
-		if (isUploadTime)  //isUploadTime在文件usart.c中定�??
-			HAL_UART_Transmit(&huart1,timeStr,strlen(timeStr),200);	//in  blocking mode
-		//strlen()以结束符'\0'为标志计算字符串长度，但是不包含'\0',上位机只要换行符'\n'
+		LCD_ShowStr(30,110, timeStr);  //在LCD上显示当前时�???
 
 		if(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_ORE) != RESET)
 		{
 			ORE_Times++;
-			LCD_ShowStr(10, 250, "ORE_Times");
+			LCD_ShowStr(10, 170, "ORE_Times");
 			LCD_ShowUint(5+LCD_CurX, LCD_CurY, ORE_Times);
 			__HAL_UART_CLEAR_OREFLAG(&huart1); //清除溢出中断
-			HAL_UART_AbortReceive_IT(&huart1);
-			HAL_UART_Receive_IT(&huart1, RxBuffer,RX_CMD_LEN);
+			//HAL_UART_AbortReceive_IT(&huart1);
+			HAL_UARTEx_ReceiveToIdle_IT(&huart1, RxBuffer, MAX_CMD_LEN);
 
 
 		}
@@ -158,5 +179,3 @@ void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 }
 
 /* USER CODE END 1 */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

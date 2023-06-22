@@ -24,19 +24,22 @@
 #include	"rtc.h"
 #include	"tftlcd.h"
 #include	<string.h>	//用到函数strlen()
+#include 	<stddef.h>
 
-uint8_t	rxCompleted=RESET;	//HAL_UART_Receive_IT()接收是否完成，作为接收完成的标志�??
-uint8_t	isUploadTime=0;	//默认不上传时间数�?
+#define	 MAX_CMD_LEN	8	//指令�??大长度，RAM：XXX%
+uint8_t	rxCompleted=RESET;	//HAL_UART_Receive_IT()接收是否完成，作为接收完成的标志�????
+uint8_t	isUploadTime=0;	//默认不上传时间数�???
 
 //定义新的空白数组用于处理数据
-uint8_t RxBuffer[35];//定义新的空白数组用于缓存数据
-uint8_t	ProBuffer[35];
+uint8_t RxBuffer[10];//定义数组 给到寄存�??
+uint8_t ProcessBuffer[10];//定义数组用于数据处理
+uint8_t	IndexBuffer=0;
 
 
 uint16_t Times=0;
 uint16_t A_CPU=0;
 uint16_t A_RAM=0;
-
+uint8_t CPUnum;
 
 /* USER CODE END 0 */
 
@@ -125,87 +128,61 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (huart->Instance == USART1)
 	{
-		//接收到固定长度数据后使能UART_IT_IDLE中断，在UART_IT_IDLE中断里再次接�??
-		rxCompleted=SET;	//接收完成
 
-		for(uint16_t i=0;i<RX_CMD_LEN;i++)
-			ProBuffer[i]=RxBuffer[i];
 
-		__HAL_UART_ENABLE_IT(huart, UART_IT_IDLE); //接收到数据后才开�?? IDLE中断
+		rxCompleted=SET;	//接收完成,只有1个字�??
+		__HAL_UART_ENABLE_IT(huart, UART_IT_IDLE); //接收到数据后才开启IDLE中断
 
 	}
 }
 
-void	on_UART_IDLE(UART_HandleTypeDef *huart)		//在串口IDLE时处�??
+void	on_UART_IDLE(UART_HandleTypeDef *huart)		//在串口IDLE时处�????
 {
-	if (__HAL_UART_GET_FLAG(huart, UART_FLAG_IDLE) == RESET)	//IDLE中断挂起标志位是否置位，UART_FLAG_IDLE是空闲标�??
+	//注意，这里不能使用函�??	__HAL_UART_GET_FLAG()，因为上位机连续�??5个字节，串口接收�??1个字节后虽然打开了IDLE中断�??
+	//	但是因为后续连续发�?�数据，�??以IDLE中断挂起标志位并不会被置�??
+	if(__HAL_UART_GET_IT_SOURCE(huart,UART_IT_IDLE) == RESET) //判断IDLE中断是否被开�??
 		return;
 
-	__HAL_UART_CLEAR_IDLEFLAG(huart); 	//清除IDLE挂起标志
-	__HAL_UART_DISABLE_IT(huart, UART_IT_IDLE); 	//禁止IDLE事件中断
-	if (rxCompleted)	//接收�??1条指�??
+	__HAL_UART_CLEAR_IDLEFLAG(huart); 	//清除IDLE标志
+	__HAL_UART_DISABLE_IT(huart, UART_IT_IDLE); 	//禁止IDLE中断
+
+	if (rxCompleted)	//接收
 	{
+		//接收到固定长度数据后使能UART_IT_IDLE中断，在UART_IT_IDLE中断里再次接�??
+		//LCD_ShowStr(10, 320, "RxCompleted");
+		ProcessBuffer[IndexBuffer]=RxBuffer[0];
+		IndexBuffer++;
+		if(ProcessBuffer[IndexBuffer]=='%'){IndexBuffer=0;}
+		//if(strstr(ProcessBuffer,"CPU:"))//判断RxBuffer字符串中是否含有CPU�??
+
+			char* failptr;//为失败不要的字符串部�?? 提供地址
+
+			CPUnum = strtol(ProcessBuffer+4, &failptr, 10);//若输入的地址�??1，则偏移1位数�??
+			LCD_ShowUint(50, LCD_CurY+LCD_SP15, CPUnum);
+			LCD_ShowStr(10, LCD_CurY+LCD_SP15, ProcessBuffer);
+	}
+
+
+		if(  (strstr(ProcessBuffer,"CPU:")==NULL)  )
+			{
+			LCD_ShowStr(10, 400, (uint8_t *)"no CPU:");
+			LCD_ShowStr(10, 400+LCD_SP15, ProcessBuffer);
+			LCD_ShowStr(10, 400+2*LCD_SP15, (uint8_t *)ProcessBuffer);
+			}
 
 		LCD_ShowStr(10, 170, (uint8_t *)"Enter on_UART_IDLE Times");
-		Times++;//记录进入空闲中断的时间
+		Times++;//记录进入空闲中断的时�??
 		LCD_ShowUint(10, LCD_CurY+LCD_SP15,Times);
-
-		LCD_ShowStr(10, LCD_CurY+LCD_SP15, (uint8_t *)ProBuffer);//将接收到的打印在LCD上
-
 		rxCompleted=RESET;
-
 		HAL_UART_Receive_IT(huart, RxBuffer, RX_CMD_LEN);	//再次启动串口接收
 
 	}
 
-}
 
-uint16_t GetCPU(uint8_t val[6])
-{
-	uint16_t CPU=0;
-	CPU = (val[0] - '0') * 100 + (val[1] - '0')*10+(val[2] - '0')*1;
 
-	/*
-	if (val[1] == ' ')  //判断“十”位是否为空
-	  {
-	    CPU = val[0] - '0';//转化字符串为数�?�，�? �? 位的字符串减去末尾的'0'后变成int型数�?
-	  }
-	  //当数据为十位数时
-	  if ((val[1] != ' ') && (val[2] == ' '))//判断 “十”位是否 有效，同时�?�百位�?�是否为�?
-	  {
-	    CPU = (val[0] - '0') * 10 + (val[1] - '0');//转化字符串为数�?�，�? 百或�? 位的字符串减去末尾的'0'后变成int型数�?
-	  }
-	  //当数据为100�?
-	  if ((val[1] == '0') && (val[2] =='0'))
-	  {
-	    CPU = 100;
-	  }
-*/
-	  return CPU;
-}
 
-uint16_t GetRAM(uint8_t val[6])
-{
-	uint8_t RAM=0;
-	RAM = (val[3] - '0') * 100 + (val[4] - '0')*10+(val[5] - '0')*1;
-/*
-	if (val[4] == ' ')
-		  {
-		    RAM = val[3] - '0';//转化字符串为数�??
-		  }
-		  //当数据为十位数时
-		  if ((val[4] != ' ') && (val[5] == ' '))
-		  {
-		    RAM = (val[3] - '0') * 10 + (val[4] - '0');//转化字符串为数�??
-		  }
-		  //当数据为100�?
-		  if ((val[4] == '0') && (val[5] =='0'))
-		  {
-		    RAM = 100;
-		  }
-*/
-		  return RAM;
-}
+
+
 
 /* USER CODE END 1 */
 
