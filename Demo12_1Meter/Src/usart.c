@@ -1,22 +1,22 @@
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * File Name          : USART.c
-  * Description        : This file provides code for the configuration
-  *                      of the USART instances.
+  * @file    usart.c
+  * @brief   This file provides code for the configuration
+  *          of the USART instances.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2023 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
-
+/* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
 
@@ -26,19 +26,10 @@
 #include	<string.h>	//用到函数strlen()
 #include 	<stddef.h>
 
-#define	 MAX_CMD_LEN	8	//指令�??大长度，RAM：XXX%
-uint8_t	rxCompleted=RESET;	//HAL_UART_Receive_IT()接收是否完成，作为接收完成的标志�????
-uint8_t	isUploadTime=0;	//默认不上传时间数�???
+char RxBuffer[MAX_CMD_LEN]= "CPU:0%";//定义数组 给到寄存�???
+uint8_t ProcessBuffer[MAX_CMD_LEN];//定义数组用于数据处理
 
-//定义新的空白数组用于处理数据
-uint8_t RxBuffer[10];//定义数组 给到寄存�??
-uint8_t ProcessBuffer[10];//定义数组用于数据处理
-uint8_t	IndexBuffer=0;
-
-
-uint16_t Times=0;
-uint16_t A_CPU=0;
-uint16_t A_RAM=0;
+//uint16_t Times=0;
 uint8_t CPUnum;
 
 /* USER CODE END 0 */
@@ -50,6 +41,13 @@ UART_HandleTypeDef huart1;
 void MX_USART1_UART_Init(void)
 {
 
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
   huart1.Init.BaudRate = 57600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
@@ -62,6 +60,9 @@ void MX_USART1_UART_Init(void)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 
@@ -124,66 +125,54 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
 	if (huart->Instance == USART1)
 	{
+        char* Remain;
+        uint8_t num = strtol(RxBuffer + 4, &Remain, 10);
+        /*调试用代码
+        LCD_ClearLine(200,200+LCD_SP15, LcdBACK_COLOR);
+        LCD_ShowStr(10, 200, RxBuffer);
+	    */
 
-
-		rxCompleted=SET;	//接收完成,只有1个字�??
-		__HAL_UART_ENABLE_IT(huart, UART_IT_IDLE); //接收到数据后才开启IDLE中断
-
+        		if (strstr(RxBuffer, "PU:") != NULL)//用strstr检测是否为CPU
+	    	    {
+	    	        HardwareShow(num, CPU_Channel);
+	    	    }
+	    	   if (strstr(RxBuffer, "PA:") != NULL)//用strstr检测是否为GPA
+	    	    {
+	    	        HardwareShow(num, GPA_Channel);
+	    	    }
+	    	   if (strstr(RxBuffer, "AM:") != NULL)//用strstr检测是否为RAM
+	    	    {
+	    	        HardwareShow(num, RAM_Channel);
+	    	    }
+	    	   HAL_UARTEx_ReceiveToIdle_IT(&huart1, RxBuffer, MAX_CMD_LEN);
 	}
 }
-
-void	on_UART_IDLE(UART_HandleTypeDef *huart)		//在串口IDLE时处�????
+void HardwareShow(uint8_t Num,HardwareChannel_TypeDef Channel)
 {
-	//注意，这里不能使用函�??	__HAL_UART_GET_FLAG()，因为上位机连续�??5个字节，串口接收�??1个字节后虽然打开了IDLE中断�??
-	//	但是因为后续连续发�?�数据，�??以IDLE中断挂起标志位并不会被置�??
-	if(__HAL_UART_GET_IT_SOURCE(huart,UART_IT_IDLE) == RESET) //判断IDLE中断是否被开�??
-		return;
-
-	__HAL_UART_CLEAR_IDLEFLAG(huart); 	//清除IDLE标志
-	__HAL_UART_DISABLE_IT(huart, UART_IT_IDLE); 	//禁止IDLE中断
-
-	if (rxCompleted)	//接收
+	if(Channel==CPU_Channel)
 	{
-		//接收到固定长度数据后使能UART_IT_IDLE中断，在UART_IT_IDLE中断里再次接�??
-		//LCD_ShowStr(10, 320, "RxCompleted");
-		ProcessBuffer[IndexBuffer]=RxBuffer[0];
-		IndexBuffer++;
-		if(ProcessBuffer[IndexBuffer]=='%'){IndexBuffer=0;}
-		//if(strstr(ProcessBuffer,"CPU:"))//判断RxBuffer字符串中是否含有CPU�??
-
-			char* failptr;//为失败不要的字符串部�?? 提供地址
-
-			CPUnum = strtol(ProcessBuffer+4, &failptr, 10);//若输入的地址�??1，则偏移1位数�??
-			LCD_ShowUint(50, LCD_CurY+LCD_SP15, CPUnum);
-			LCD_ShowStr(10, LCD_CurY+LCD_SP15, ProcessBuffer);
+		LCD_ClearLine(240, 240+LCD_SP15, LcdBACK_COLOR);//先清楚从240行到270行的像素，否则100->0时会有残留。
+		LCD_ShowStr(10, 240, "CPUnum=");
+		LCD_ShowUint(LCD_CurX+10, LCD_CurY, Num);
+	}
+	if(Channel==GPA_Channel)
+	{
+		LCD_ClearLine(270, 270+LCD_SP15, LcdBACK_COLOR);//先清楚从240行到270行的像素，否则100->0时会有残留。
+		LCD_ShowStr(10, 270, "GPAnum=");
+		LCD_ShowUint(LCD_CurX+10, LCD_CurY, Num);
+	}
+	if(Channel==RAM_Channel)
+	{
+		LCD_ClearLine(310, 310+LCD_SP15, LcdBACK_COLOR);//先清楚从240行到270行的像素，否则100->0时会有残留。
+		LCD_ShowStr(10, 310, "RAMnum=");
+		LCD_ShowUint(LCD_CurX+10, LCD_CurY, Num);
 	}
 
-
-		if(  (strstr(ProcessBuffer,"CPU:")==NULL)  )
-			{
-			LCD_ShowStr(10, 400, (uint8_t *)"no CPU:");
-			LCD_ShowStr(10, 400+LCD_SP15, ProcessBuffer);
-			LCD_ShowStr(10, 400+2*LCD_SP15, (uint8_t *)ProcessBuffer);
-			}
-
-		LCD_ShowStr(10, 170, (uint8_t *)"Enter on_UART_IDLE Times");
-		Times++;//记录进入空闲中断的时�??
-		LCD_ShowUint(10, LCD_CurY+LCD_SP15,Times);
-		rxCompleted=RESET;
-		HAL_UART_Receive_IT(huart, RxBuffer, RX_CMD_LEN);	//再次启动串口接收
-
-	}
-
-
-
-
-
+}
 
 
 /* USER CODE END 1 */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

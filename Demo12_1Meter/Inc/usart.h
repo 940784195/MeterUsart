@@ -1,26 +1,28 @@
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * File Name          : USART.h
-  * Description        : This file provides code for the configuration
-  *                      of the USART instances.
+  * @file    usart.h
+  * @brief   This file contains all the function prototypes for
+  *          the usart.c file
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2023 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
+/* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __usart_H
-#define __usart_H
+#ifndef __USART_H__
+#define __USART_H__
+
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
@@ -33,9 +35,15 @@
 extern UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN Private defines */
-#define	RX_CMD_LEN	1	//指令长度�????20字节
+typedef enum
+{
+	CPU_Channel=0x00U,
+	RAM_Channel=0x01U,
+	GPA_Channel=0x02U,
+}HardwareChannel_TypeDef;
 
-extern uint8_t RxBuffer[10];//20个字符的输入缓冲�???
+#define	 MAX_CMD_LEN	100
+extern char RxBuffer[MAX_CMD_LEN];
 
 
 extern	uint8_t	isUploadTime;	//是否上传时间数据
@@ -45,25 +53,14 @@ extern	uint8_t	isUploadTime;	//是否上传时间数据
 void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void on_UART_IDLE(UART_HandleTypeDef *huart);	//IDLE中断�????测与处理
 
 void updateRTCTime();	//对接收指令的处理
-
-uint16_t GetRAM(uint8_t val[6]);
-uint16_t GetCPU(uint8_t val[6]);
+void HardwareShow(uint8_t Num,HardwareChannel_TypeDef Channel);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
-#endif /*__ usart_H */
 
-/**
-  * @}
-  */
+#endif /* __USART_H__ */
 
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

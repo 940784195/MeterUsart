@@ -13,15 +13,14 @@
   * the "License"; You may not use this file except in compliance with the
   * License. You may obtain a copy of the License at:
   *                        opensource.org/licenses/BSD-3-Clause
-  *本案例使用说明：1.在RTC周期唤醒中断里，读取当前时间后再LCD上显示（rtc.c�?????
-  *本案例使用说明：2.将时间转换为字符串后 发�?�给串口（rtc.c-HAL_UART_Transmit�?????
-  *本案例使用说明：3.串口监视软件查看接受到的数据，并且向�?????发板发�?�指令数据（#M/H+Num；）
+  *本案例使用说明：1.在RTC周期唤醒中断里，读取当前时间后再LCD上显示（rtc.c�??????
+  *本案例使用说明：2.将时间转换为字符串后 发�?�给串口（rtc.c-HAL_UART_Transmit�??????
+  *本案例使用说明：3.串口监视软件查看接受到的数据，并且向�??????发板发�?�指令数据（#M/H+Num；）
   *本案例使用说明：4.中断方式接收HAL_UART_Receive_IT（USART.c中实现）
   *本案例使用说明：5.空闲时接受来自上位机的字符串 并处理后显示（USART.c中实现）
   ******************************************************************************
   */
 /* USER CODE END Header */
-
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "rtc.h"
@@ -97,7 +96,7 @@ int main(void)
   MX_RTC_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-	TFTLCD_Init();	//LCD软件初始�?????
+	TFTLCD_Init();	//LCD软件初始�??????
 
 	LCD_ShowStr(10,10, (uint8_t *)"Demo12_1:USART1-Meter");
 	LCD_ShowStr(10,LCD_CurY+LCD_SP15, (uint8_t *)"Baudrate= ");
@@ -109,8 +108,8 @@ int main(void)
 
 	LCD_ShowStr(10,140, (uint8_t *)"Received command string is:");
 	LcdFRONT_COLOR=lcdColor_WHITE;
-
-	HAL_UART_Receive_IT(&huart1, RxBuffer,RX_CMD_LEN);//接收1个字节，RxBuffer[10]，上位机�??多发8个字�??
+	__HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE); 		//打开IDLE中断
+	HAL_UARTEx_ReceiveToIdle_IT(&huart1, RxBuffer, MAX_CMD_LEN);//保证有足够的字节数能容纳
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -132,13 +131,14 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /** Initializes the CPU, AHB and APB busses clocks
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -153,7 +153,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks
+
+  /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -163,12 +164,6 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
-  PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
@@ -206,5 +201,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
